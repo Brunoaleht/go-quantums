@@ -126,6 +126,144 @@ func PauliXHandler(c *gin.Context) {
 	})
 }
 
+func PauliYHandler(c *gin.Context) {
+	var input quantum.Complex
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	q := quantum.Complex{Real: input.Real, Imag: input.Imag}
+
+	results := make(chan struct {
+		QY   quantum.Complex
+		Cord Coords
+	})
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		qY := quantum.PauliY(q)
+		x, y, z, phi, theta := bloch.BlochCoords(qY)
+
+		results <- struct {
+			QY   quantum.Complex
+			Cord Coords
+		}{
+			QY:   qY,
+			Cord: Coords{X: x, Y: y, Z: z, Phi: phi, Theta: theta},
+		}
+	}()
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	result := <-results
+	c.JSON(http.StatusOK, gin.H{
+		"qY":      fmt.Sprintf("(%.2f, %.2f)", result.QY.Real, result.QY.Imag),
+		"x, y, z": fmt.Sprintf("(%.2f, %.2f, %.2f)", result.Cord.X, result.Cord.Y, result.Cord.Z),
+	})
+}
+
+func PauliZHandler(c *gin.Context) {
+	var input quantum.Complex
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	q := quantum.Complex{Real: input.Real, Imag: input.Imag}
+
+	results := make(chan struct {
+		QZ   quantum.Complex
+		Cord Coords
+	})
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		qZ := quantum.PauliZ(q)
+		x, y, z, phi, theta := bloch.BlochCoords(qZ)
+
+		results <- struct {
+			QZ   quantum.Complex
+			Cord Coords
+		}{
+			QZ:   qZ,
+			Cord: Coords{X: x, Y: y, Z: z, Phi: phi, Theta: theta},
+		}
+	}()
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	result := <-results
+	c.JSON(http.StatusOK, gin.H{
+		"qZ":      fmt.Sprintf("(%.2f, %.2f)", result.QZ.Real, result.QZ.Imag),
+		"x, y, z": fmt.Sprintf("(%.2f, %.2f, %.2f)", result.Cord.X, result.Cord.Y, result.Cord.Z),
+	})
+}
+
+func PhaseShiftHandler(c *gin.Context) {
+	var input struct {
+		Real float64 `json:"real"`
+		Imag float64 `json:"imag"`
+		Phi  float64 `json:"phi"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	q := quantum.Complex{Real: input.Real, Imag: input.Imag}
+
+	results := make(chan struct {
+		QPS  quantum.Complex
+		Cord Coords
+	})
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		qPS := quantum.PhaseShift(q, input.Phi)
+		x, y, z, phi, theta := bloch.BlochCoords(qPS)
+
+		results <- struct {
+			QPS  quantum.Complex
+			Cord Coords
+		}{
+			QPS:  qPS,
+			Cord: Coords{X: x, Y: y, Z: z, Phi: phi, Theta: theta},
+		}
+	}()
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	result := <-results
+	c.JSON(http.StatusOK, gin.H{
+		"qPS":     fmt.Sprintf("(%.2f, %.2f)", result.QPS.Real, result.QPS.Imag),
+		"phi":     fmt.Sprintf("%.2f", input.Phi),
+		"theta":   fmt.Sprintf("%.2f", result.Cord.Theta),
+		"x, y, z": fmt.Sprintf("(%.2f, %.2f, %.2f)", result.Cord.X, result.Cord.Y, result.Cord.Z),
+	})
+}
+
 func RunQuantumOnScriptHandler(c *gin.Context) {
 	scriptPath := c.Param("scriptPath")
 
