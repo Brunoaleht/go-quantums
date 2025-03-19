@@ -7,16 +7,17 @@ import (
 	"go-quantums/quantum"
 	"net/http"
 	"os/exec"
-	"strconv"
 	"sync"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Coords struct {
-	X float64 `json:"x"`
-	Y float64 `json:"y"`
-	Z float64 `json:"z"`
+	X     float64 `json:"x"`
+	Y     float64 `json:"y"`
+	Z     float64 `json:"z"`
+	Phi   float64 `json:"phi"`
+	Theta float64 `json:"theta"`
 }
 
 type Result struct {
@@ -26,22 +27,22 @@ type Result struct {
 	Cord1 Coords          `json:"cord1"`
 }
 
-func parseParam(param string) float64 {
-	value, err := strconv.ParseFloat(param, 64)
-	if err != nil {
-		return 0.0
-	}
-	return value
-}
+// func parseParam(param string) float64 {
+// 	value, err := strconv.ParseFloat(param, 64)
+// 	if err != nil {
+// 		return 0.0
+// 	}
+// 	return value
+// }
 
 func HadamardHandler(c *gin.Context) {
-	real := c.Param("real")
-	imag := c.Param("imag")
-
-	q := quantum.Complex{
-		Real: parseParam(real),
-		Imag: parseParam(imag),
+	var input quantum.Complex
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
+
+	q := quantum.Complex{Real: input.Real, Imag: input.Imag}
 
 	results := make(chan Result)
 	var wg sync.WaitGroup
@@ -50,14 +51,14 @@ func HadamardHandler(c *gin.Context) {
 	go func() {
 		defer wg.Done()
 		q0, q1 := quantum.Hadamard(q)
-		x0, y0, z0 := bloch.BlochCoords(q0)
-		x1, y1, z1 := bloch.BlochCoords(q1)
+		x0, y0, z0, theta0, phi0 := bloch.BlochCoords(q0)
+		x1, y1, z1, theta1, phi1 := bloch.BlochCoords(q1)
 
 		result := Result{
 			Q0:    quantum.Complex{Real: q0.Real, Imag: q0.Imag},
 			Q1:    quantum.Complex{Real: q1.Real, Imag: q1.Imag},
-			Cord0: Coords{X: x0, Y: y0, Z: z0},
-			Cord1: Coords{X: x1, Y: y1, Z: z1},
+			Cord0: Coords{X: x0, Y: y0, Z: z0, Phi: phi0, Theta: theta0},
+			Cord1: Coords{X: x1, Y: y1, Z: z1, Phi: phi1, Theta: theta1},
 		}
 
 		results <- result
@@ -70,21 +71,24 @@ func HadamardHandler(c *gin.Context) {
 
 	result := <-results
 	c.JSON(http.StatusOK, gin.H{
-		"q0":         fmt.Sprintf("(%.2f, %.2f)", result.Q0.Real, result.Q0.Imag),
-		"x0, y0, z0": fmt.Sprintf("(%.2f, %.2f, %.2f)", result.Cord0.X, result.Cord0.Y, result.Cord0.Z),
-		"q1":         fmt.Sprintf("(%.2f, %.2f)", result.Q1.Real, result.Q1.Imag),
-		"x1, y1, z1": fmt.Sprintf("(%.2f, %.2f, %.2f)", result.Cord1.X, result.Cord1.Y, result.Cord1.Z),
+		"q0":           fmt.Sprintf("(%.2f, %.2f)", result.Q0.Real, result.Q0.Imag),
+		"theta0, phi0": fmt.Sprintf("(%.2f, %.2f)", result.Cord0.Theta, result.Cord0.Phi),
+		"x0, y0, z0":   fmt.Sprintf("(%.2f, %.2f, %.2f)", result.Cord0.X, result.Cord0.Y, result.Cord0.Z),
+		"q1":           fmt.Sprintf("(%.2f, %.2f)", result.Q1.Real, result.Q1.Imag),
+		"theta1, phi1": fmt.Sprintf("(%.2f, %.2f)", result.Cord1.Theta, result.Cord1.Phi),
+		"x1, y1, z1":   fmt.Sprintf("(%.2f, %.2f, %.2f)", result.Cord1.X, result.Cord1.Y, result.Cord1.Z),
 	})
 }
 
 func PauliXHandler(c *gin.Context) {
-	real := c.Param("real")
-	imag := c.Param("imag")
 
-	q := quantum.Complex{
-		Real: parseParam(real),
-		Imag: parseParam(imag),
+	var input quantum.Complex
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
+
+	q := quantum.Complex{Real: input.Real, Imag: input.Imag}
 
 	results := make(chan struct {
 		QX   quantum.Complex
@@ -98,14 +102,14 @@ func PauliXHandler(c *gin.Context) {
 		defer wg.Done()
 
 		qX := quantum.PauliX(q)
-		x, y, z := bloch.BlochCoords(qX)
+		x, y, z, phi, theta := bloch.BlochCoords(qX)
 
 		results <- struct {
 			QX   quantum.Complex
 			Cord Coords
 		}{
 			QX:   qX,
-			Cord: Coords{X: x, Y: y, Z: z},
+			Cord: Coords{X: x, Y: y, Z: z, Phi: phi, Theta: theta},
 		}
 	}()
 

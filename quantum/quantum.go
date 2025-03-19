@@ -4,7 +4,8 @@ import "math"
 
 // Estrutura para representar um número complexo
 type Complex struct {
-	Real, Imag float64
+	Real float64 `json:"real"`
+	Imag float64 `json:"imag"`
 }
 
 // Porta Hadamard
