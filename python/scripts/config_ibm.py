@@ -1,4 +1,10 @@
-from qiskit import IBMQ
+from qiskit_ibm_runtime import QiskitRuntimeService
+from dotenv import load_dotenv
+import os
 
-IBMQ.save_account('YOUR_IBM_QUANTUM_API_TOKEN', overwrite=True)
+load_dotenv()
+
+api_token = os.getenv("IBM_API_TOKEN")
+
+QiskitRuntimeService.save_account(token=api_token, channel="ibm_quantum")
 print("Account saved!")

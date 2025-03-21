@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go-quantums/bloch"
 	"go-quantums/quantum"
+	"log"
 	"net/http"
 	"os/exec"
 	"sync"
@@ -266,6 +267,7 @@ func PhaseShiftHandler(c *gin.Context) {
 
 func RunQuantumOnScriptHandler(c *gin.Context) {
 	scriptPath := c.Param("scriptPath")
+	log.Printf("Running: %s", scriptPath)
 
 	currentPath := fmt.Sprintf("/python/scripts/%s", scriptPath)
 

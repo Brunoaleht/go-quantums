@@ -29,7 +29,7 @@ func Hadamard(q Complex) (Complex, Complex) {
 	return q0, q1
 }
 
-// Porta Pauli-X CNOT
+// Porta Pauli-X NOT
 func PauliX(q Complex) Complex {
 	return Complex{Real: q.Imag, Imag: q.Real}
 }
